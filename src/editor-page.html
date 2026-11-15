@@ -1,0 +1,180 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'self'; base-uri 'none'; form-action 'none'"><title>대강호: 창룡과 백조 세이브 에디터 v1.0</title><style>
+:root{color-scheme:light dark;--ink:#17130f;--ink-2:#2e2720;--paper:#f2eadb;--paper-2:#e6dbc5;--paper-3:#d7c8a9;--vermilion:#b53324;--vermilion-2:#d64a37;--gold:#b4873f;--gold-2:#e0bd74;--muted:#766b5b;--line:#cbb994;--shadow:0 10px 26px rgba(23,19,15,.18);--radius:10px;--focus:0 0 0 3px rgba(181,51,36,.28);font-variant-numeric:tabular-nums}
+[data-theme="dark"]{color-scheme:dark;--ink:#f1e8d8;--ink-2:#d8cbb9;--paper:#151311;--paper-2:#211d18;--paper-3:#332c24;--vermilion:#e05a45;--vermilion-2:#ff7b62;--gold:#d7a958;--gold-2:#f1d28c;--muted:#b1a28c;--line:#524638;--shadow:0 12px 30px rgba(0,0,0,.48);--focus:0 0 0 3px rgba(224,90,69,.32)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#f1e8d8;--ink-2:#d8cbb9;--paper:#151311;--paper-2:#211d18;--paper-3:#332c24;--vermilion:#e05a45;--vermilion-2:#ff7b62;--gold:#d7a958;--gold-2:#f1d28c;--muted:#b1a28c;--line:#524638;--shadow:0 12px 30px rgba(0,0,0,.48);--focus:0 0 0 3px rgba(224,90,69,.32)}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:"Noto Serif KR","Nanum Myeongjo",Georgia,serif;background:radial-gradient(circle at 20% 0,color-mix(in srgb,var(--gold) 13%,transparent),transparent 34rem),linear-gradient(145deg,var(--paper),var(--paper-2) 56%,var(--paper-3));color:var(--ink);line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.hidden,[hidden]{display:none!important}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;padding:.8rem 1rem;border-bottom:2px solid var(--line);background:linear-gradient(90deg,color-mix(in srgb,var(--paper) 88%,var(--gold)),var(--paper-2));box-shadow:var(--shadow);position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:.5rem;font-weight:800;letter-spacing:.08em;color:var(--ink);white-space:nowrap}
+.brand::before{content:"";width:.7rem;height:1.6rem;background:linear-gradient(var(--vermilion),var(--gold));border-radius:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 30%,transparent)}
+.badges{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-left:auto}
+.badge{display:inline-flex;align-items:center;min-height:1.55rem;padding:.12rem .5rem;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--paper) 78%,var(--gold));font-size:.78rem;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.badge-dirty{border-color:var(--vermilion);background:color-mix(in srgb,var(--vermilion) 16%,var(--paper));color:var(--vermilion)}
+.toolbar-row{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;padding:.45rem;border:1px solid var(--line);border-radius:var(--radius);background:color-mix(in srgb,var(--paper) 84%,transparent)}
+.status-bar{flex:1 1 16rem;min-height:2rem;display:flex;align-items:center;padding:.35rem .65rem;border-left:3px solid var(--vermilion);border-radius:4px;background:color-mix(in srgb,var(--paper) 74%,var(--ink) 5%);color:var(--ink-2);font-size:.86rem;font-weight:600;overflow-wrap:anywhere}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.32rem;min-height:2.05rem;padding:.32rem .72rem;border:1px solid var(--line);border-radius:7px;background:linear-gradient(var(--paper),color-mix(in srgb,var(--paper-2) 88%,var(--gold)));color:var(--ink);font-weight:700;box-shadow:0 1px 0 color-mix(in srgb,var(--paper) 70%,transparent) inset;transition:transform .12s ease,border-color .12s ease,background .12s ease}
+.btn:hover{border-color:var(--gold);background:linear-gradient(color-mix(in srgb,var(--paper) 82%,var(--gold-2)),var(--paper-2));transform:translateY(-1px)}
+.btn:focus-visible{outline:0;box-shadow:var(--focus)}
+.btn:disabled{opacity:.46;cursor:not-allowed;transform:none}
+.btn-primary{border-color:var(--vermilion);background:linear-gradient(var(--vermilion-2),var(--vermilion));color:#fff8ed;text-shadow:0 1px 0 rgba(0,0,0,.22)}
+.btn-primary:hover{border-color:var(--gold-2);background:linear-gradient(var(--vermilion),var(--vermilion-2))}
+.btn-danger{border-color:var(--vermilion);color:var(--vermilion);background:color-mix(in srgb,var(--vermilion) 10%,var(--paper))}
+.btn-danger:hover{background:var(--vermilion);color:#fff8ed}
+.btn-sm{min-height:1.65rem;padding:.14rem .46rem;font-size:.78rem;border-radius:6px}
+.tabs{display:flex;flex-wrap:wrap;gap:.22rem;padding:.65rem 1rem 0;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--paper-2) 76%,transparent)}
+[role="tab"]{appearance:none;border:1px solid transparent;border-bottom:0;border-radius:9px 9px 0 0;padding:.55rem .88rem;background:transparent;color:var(--muted);font-weight:800;letter-spacing:.04em}
+[role="tab"]:hover{color:var(--ink);background:color-mix(in srgb,var(--paper) 58%,transparent)}
+[role="tab"]:focus-visible{outline:0;box-shadow:var(--focus)}
+[role="tab"][aria-selected="true"]{color:var(--vermilion);border-color:var(--line);background:var(--paper);box-shadow:0 -3px 0 var(--vermilion) inset}
+.panel{display:grid;gap:.85rem;padding:1rem;animation:ink-in .22s ease}
+.panel[hidden]{display:none!important}
+@keyframes ink-in{from{opacity:.25;transform:translateY(4px)}to{opacity:1;transform:none}}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:.7rem}
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:.75rem;background:linear-gradient(145deg,color-mix(in srgb,var(--paper) 90%,var(--gold) 6%),var(--paper-2));box-shadow:0 3px 12px color-mix(in srgb,var(--ink) 12%,transparent);overflow-wrap:anywhere}
+.card h2,.card h3{margin:.05rem 0 .5rem;color:var(--vermilion);letter-spacing:.04em}
+.card dl{display:grid;grid-template-columns:minmax(5rem,auto) 1fr;gap:.25rem .65rem;margin:0}
+.card dt{color:var(--muted);font-weight:700}
+.card dd{margin:0;font-weight:700}
+.preset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.6rem}
+.preset-card{text-align:left;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:9px;padding:.65rem;background:color-mix(in srgb,var(--paper) 82%,var(--gold));color:var(--ink);box-shadow:0 2px 8px color-mix(in srgb,var(--ink) 10%,transparent)}
+.preset-card:hover,.preset-card:focus-visible{border-color:var(--vermilion);border-left-color:var(--vermilion);background:color-mix(in srgb,var(--paper) 74%,var(--gold-2));outline:0;box-shadow:var(--focus)}
+.split-layout{display:grid;grid-template-columns:minmax(15rem,22rem) minmax(0,1fr);gap:.85rem;align-items:start}
+.table-wrap{width:100%;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:color-mix(in srgb,var(--paper) 84%,transparent);max-height:34rem}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{padding:.42rem .48rem;border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent);text-align:left;vertical-align:middle}
+th{position:sticky;top:0;z-index:1;background:color-mix(in srgb,var(--paper-2) 86%,var(--gold));color:var(--ink);font-weight:900;letter-spacing:.03em}
+tbody tr:hover{background:color-mix(in srgb,var(--gold) 9%,transparent)}
+td input,td select{width:100%;min-width:4.5rem;border:1px solid var(--line);border-radius:5px;padding:.2rem .3rem;background:var(--paper);color:var(--ink)}
+.slot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.65rem}
+.pill-list{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;margin:.4rem 0}
+.pill{display:inline-flex;align-items:center;gap:.3rem;border:1px solid var(--line);border-radius:999px;padding:.14rem .48rem;background:color-mix(in srgb,var(--paper) 78%,var(--gold));font-size:.78rem;font-weight:700}
+.pill button{border:0;background:transparent;color:var(--vermilion);font-weight:900;padding:0 .1rem;line-height:1}
+dialog#picker-dialog{width:min(48rem,94vw);max-height:84vh;border:1px solid var(--gold);border-radius:14px;padding:0;background:var(--paper);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.48)}
+dialog#picker-dialog::backdrop{background:rgba(10,8,6,.58);backdrop-filter:blur(3px)}
+.picker-list{display:grid;gap:.34rem;max-height:52vh;overflow:auto;padding:.6rem}
+.picker-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;align-items:center;border:1px solid var(--line);border-radius:7px;padding:.4rem .55rem;background:color-mix(in srgb,var(--paper) 86%,var(--gold));font-weight:700}
+.picker-item:hover,.picker-item:focus-visible{border-color:var(--vermilion);outline:0;box-shadow:var(--focus)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:.65rem}
+.form-grid label{display:grid;gap:.2rem;color:var(--muted);font-size:.78rem;font-weight:800}
+.form-grid input,.form-grid select,.form-grid textarea,td select{border:1px solid var(--line);border-radius:6px;padding:.42rem .5rem;background:var(--paper);color:var(--ink);min-width:0}
+.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,td input:focus,td select:focus{outline:0;box-shadow:var(--focus);border-color:var(--vermilion)}
+.empty{padding:.8rem;color:var(--muted);font-style:italic;text-align:center}
+.mono{font-family:"Cascadia Mono","D2Coding",Consolas,monospace;font-size:.78rem;white-space:pre-wrap;word-break:break-word}
+@media (max-width:760px){.topbar{align-items:stretch}.brand{width:100%}.badges{margin-left:0}.status-bar{flex-basis:100%}.split-layout{grid-template-columns:1fr}.panel{padding:.7rem}.tabs{padding:.55rem .6rem 0}[role="tab"]{padding:.48rem .6rem;font-size:.82rem}}
+</style></head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>대강호: 창룡과 백조 세이브 에디터 v1.0</h1>
+      <div class="badges">
+        <span id="file-badge" class="badge">파일 미로드</span>
+        <span id="dirty-badge" class="badge badge-dirty" hidden>미저장 변경</span>
+      </div>
+      <button type="button" id="btn-theme" class="btn btn-sm">테마 전환</button>
+    </div>
+    <div id="native-bar" class="toolbar-row" hidden>
+      <button type="button" id="btn-native-open" class="btn btn-sm">열기 (.dat)</button>
+      <button type="button" id="btn-native-save" class="btn btn-sm">저장 (백업 생성)</button>
+      <button type="button" id="btn-native-save-copy" class="btn btn-sm">다른 이름으로 저장</button>
+    </div>
+    <div id="server-bar" class="toolbar-row" hidden>
+      <select id="server-save-select" aria-label="서버 세이브 파일 선택"></select>
+      <button type="button" id="btn-server-load" class="btn btn-sm">불러오기</button>
+      <button type="button" id="btn-server-save" class="btn btn-sm">서버 저장</button>
+    </div>
+    <div id="browser-bar" class="toolbar-row">
+      <input type="file" id="file-input" accept=".dat" class="hidden">
+      <button type="button" id="btn-file-open" class="btn btn-sm">파일 열기 (.dat)</button>
+      <button type="button" id="btn-download-dat" class="btn btn-sm" disabled>다운로드 (.dat)</button>
+      <button type="button" id="btn-load-demo" class="btn btn-sm">데모 세이브 체험</button>
+    </div>
+    <div id="status-msg" class="status-bar" role="status" aria-live="polite">세이브 파일을 열거나 데모 세이브 체험을 눌러 시작하세요.</div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="편집기 탭">
+    <button type="button" role="tab" id="tab-btn-summary" aria-controls="panel-summary" aria-selected="true">요약 · 프리셋 · 재화</button>
+    <button type="button" role="tab" id="tab-btn-chara" aria-controls="panel-chara" aria-selected="false">인물 · 능력치</button>
+    <button type="button" role="tab" id="tab-btn-kungfu" aria-controls="panel-kungfu" aria-selected="false">무공 · 특성</button>
+    <button type="button" role="tab" id="tab-btn-inventory" aria-controls="panel-inventory" aria-selected="false">장비 · 소지품</button>
+    <button type="button" role="tab" id="tab-btn-party" aria-controls="panel-party" aria-selected="false">동료 · 파티 · 플래그</button>
+    <button type="button" role="tab" id="tab-btn-atlas" aria-controls="panel-atlas" aria-selected="false">코드 도감 · 검증</button>
+  </nav>
+
+  <main>
+    <section id="panel-summary" class="panel" role="tabpanel" aria-labelledby="tab-btn-summary">
+      <div id="summary-cards" class="grid-cards"></div>
+      <div id="preset-grid" class="preset-grid"></div>
+      <div id="world-form" class="card"></div>
+    </section>
+
+    <section id="panel-chara" class="panel" role="tabpanel" aria-labelledby="tab-btn-chara" hidden>
+      <div id="chara-toolbar" class="toolbar-row">
+        <input id="chara-filter" type="search" placeholder="인물 검색...">
+        <select id="chara-select" aria-label="인물 선택"></select>
+      </div>
+      <div id="chara-basic-box" class="card"></div>
+      <div id="stat-group-bar" class="pill-list"></div>
+      <div class="toolbar-row">
+        <input id="stat-search" type="search" placeholder="능력치 이름/ID 검색...">
+      </div>
+      <div id="stat-table-wrap" class="table-wrap"></div>
+    </section>
+
+    <section id="panel-kungfu" class="panel" role="tabpanel" aria-labelledby="tab-btn-kungfu" hidden>
+      <div id="kungfu-box" class="card"></div>
+      <div id="trait-box" class="card"></div>
+    </section>
+
+    <section id="panel-inventory" class="panel" role="tabpanel" aria-labelledby="tab-btn-inventory" hidden>
+      <div id="equip-slot-box" class="card slot-grid"></div>
+      <div class="card">
+        <div class="toolbar-row">
+          <input id="inv-search" type="search" placeholder="아이템 검색...">
+          <select id="inv-cat" aria-label="아이템 분류"></select>
+          <button type="button" id="btn-add-item" class="btn btn-primary btn-sm">+ 아이템 추가</button>
+        </div>
+        <div id="inv-table-wrap" class="table-wrap"></div>
+      </div>
+      <div id="forged-box" class="card"></div>
+    </section>
+
+    <section id="panel-party" class="panel" role="tabpanel" aria-labelledby="tab-btn-party" hidden>
+      <div class="split-layout">
+        <div id="party-box" class="card"></div>
+        <div class="card">
+          <div class="toolbar-row">
+            <input id="flag-search" type="search" placeholder="플래그 검색...">
+          </div>
+          <div id="flag-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-atlas" class="panel" role="tabpanel" aria-labelledby="tab-btn-atlas" hidden>
+      <div id="validate-box" class="card"></div>
+      <div id="atlas-box" class="grid-cards"></div>
+      <div id="raw-json-box" class="card"></div>
+    </section>
+  </main>
+
+  <dialog id="picker-dialog" aria-labelledby="picker-title">
+    <div class="toolbar-row">
+      <h2 id="picker-title">항목 선택</h2>
+      <button type="button" id="btn-picker-close" class="btn btn-sm">닫기</button>
+    </div>
+    <input id="picker-search" type="search" placeholder="한글·중문·영문·ID 검색...">
+    <div id="picker-list" class="picker-list"></div>
+  </dialog>
+
+  <!-- BUNDLE_SCRIPTS_START -->
+  <script src="catalog-data.js"></script>
+  <script src="msgpack-codec.js"></script>
+  <script src="editor-core.js"></script>
+  <script src="editor-ui.js"></script>
+  <!-- BUNDLE_SCRIPTS_END -->
+</body>
+</html>
