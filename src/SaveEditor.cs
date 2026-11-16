@@ -15,8 +15,8 @@ using Microsoft.Web.WebView2.WinForms;
 
 [assembly: AssemblyTitle("World of Kungfu: Dragon and Eagle Save Editor")]
 [assembly: AssemblyProduct("World of Kungfu: Dragon and Eagle Save Editor")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace WorldOfKungfuSaveEditor
 {
@@ -51,7 +51,7 @@ namespace WorldOfKungfuSaveEditor
             {
                 if (args.Length != 2 && args.Length != 3)
                 {
-                    Console.Error.WriteLine("usage: WorldOfKungfuSaveEditor-v1.0.exe --self-test <test-root> [<seed-dat>]");
+                    Console.Error.WriteLine("usage: WorldOfKungfuSaveEditor-v1.1.exe --self-test <test-root> [<seed-dat>]");
                     return 2;
                 }
                 SaveStore.NoLinks(args[1]);
@@ -74,13 +74,13 @@ namespace WorldOfKungfuSaveEditor
             }
             else if (args != null && args.Length != 0)
             {
-                Console.Error.WriteLine("usage: WorldOfKungfuSaveEditor-v1.0.exe [--self-test <root> [<seed-dat>]]");
+                Console.Error.WriteLine("usage: WorldOfKungfuSaveEditor-v1.1.exe [--self-test <root> [<seed-dat>]]");
                 return 2;
             }
             else
             {
                 string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                RuntimeFolder = Path.Combine(localAppData, "WorldOfKungfuSaveEditor", "runtime-1.0.0");
+                RuntimeFolder = Path.Combine(localAppData, "WorldOfKungfuSaveEditor", "runtime-1.1.0");
             }
 
             AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
@@ -112,7 +112,7 @@ namespace WorldOfKungfuSaveEditor
             CoreWebView2Environment.SetLoaderDllFolderPath(RuntimeFolder);
 
             MainForm = new Form();
-            MainForm.Text = "대강호: 창룡과 백조 세이브 에디터 v1.0";
+            MainForm.Text = "대강호: 창룡과 백조 세이브 에디터 v1.1";
             MainForm.Width = 1180;
             MainForm.Height = 820;
             MainForm.MinimumSize = new Size(880, 600);

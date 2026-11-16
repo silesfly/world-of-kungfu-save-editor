@@ -1438,7 +1438,7 @@ async function main() {
     console.error(`FAIL: sync chain\n  ${err && err.message ? err.message : err}`);
   }
 
-  const htmlPath = path.join(ROOT, 'dist', 'WorldOfKungfuSaveEditor-v1.0.html');
+  const htmlPath = path.join(ROOT, 'dist', 'WorldOfKungfuSaveEditor-v1.1.html');
   if (fs.existsSync(htmlPath)) {
     ok('offline html bundle', () => {
       const stat = fs.statSync(htmlPath);

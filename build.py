@@ -6,8 +6,8 @@ import subprocess
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 HTML_IN = os.path.join(ROOT, "src", "editor-page.html")
-HTML_OUT = os.path.join(ROOT, "dist", "WorldOfKungfuSaveEditor-v1.0.html")
-EXE_OUT = os.path.join(ROOT, "dist", "WorldOfKungfuSaveEditor-v1.0.exe")
+HTML_OUT = os.path.join(ROOT, "dist", "WorldOfKungfuSaveEditor-v1.1.html")
+EXE_OUT = os.path.join(ROOT, "dist", "WorldOfKungfuSaveEditor-v1.1.exe")
 SCRIPT_ORDER = ("catalog-data.js", "msgpack-codec.js", "editor-core.js", "editor-ui.js")
 BUNDLE_START = "<!-- BUNDLE_SCRIPTS_START -->"
 BUNDLE_END = "<!-- BUNDLE_SCRIPTS_END -->"

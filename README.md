@@ -1,4 +1,4 @@
-# 대강호: 창룡과 백조 세이브 에디터 v1.0
+# 대강호: 창룡과 백조 세이브 에디터 v1.1
 
 **The World of Kungfu: Dragon and Eagle** / **大江湖之苍龙与白鸟** 세이브 에디터입니다.  
 Steam AppID `1407450` · 내부 빌드명 `TheWorldOfKongFu_Stable` · 한국어 패치 `TWOKF_KoreanPatch` 호환 · 한국어/중국어/영어 카탈로그 내장.
@@ -18,7 +18,7 @@ Steam AppID `1407450` · 내부 빌드명 `TheWorldOfKongFu_Stable` · 한국어
 
 ## 2. 3가지 실행 방식 (단일 코드베이스)
 
-### 2.1 Windows 독립 실행형 — `WorldOfKungfuSaveEditor-v1.0.exe`
+### 2.1 Windows 독립 실행형 — `WorldOfKungfuSaveEditor-v1.1.exe`
 
 - 단일 실행 파일
 - 필수 구성 요소: Windows 10/11 (x64) + `.NET Framework 4.8` + `Microsoft Edge WebView2 Evergreen Runtime`
@@ -27,7 +27,7 @@ Steam AppID `1407450` · 내부 빌드명 `TheWorldOfKongFu_Stable` · 한국어
 - 실행 중인 게임 프로세스(`TheWorldOfKongfu`) 감지 시 편집 차단
 - 저장 시 타임스탬프 `.bak` 자동 백업 + SHA-256 무결성 검증
 
-### 2.2 100% 오프라인 단일 HTML — `WorldOfKungfuSaveEditor-v1.0.html`
+### 2.2 100% 오프라인 단일 HTML — `WorldOfKungfuSaveEditor-v1.1.html`
 
 - 외부 네트워크 요청 0건 (CDN·폰트·분석 도구 없음)
 - 브라우저만으로 `.dat` 열기 · 편집 · 다운로드
@@ -144,7 +144,7 @@ Windows 배포본 빌드:
 
 ```bash
 python build.py --exe --webview2 <WebView2_SDK_폴더>
-WorldOfKungfuSaveEditor-v1.0.exe --self-test <출력_폴더> [<시드_dat>]
+WorldOfKungfuSaveEditor-v1.1.exe --self-test <출력_폴더> [<시드_dat>]
 ```
 
 실제 세이브 코퍼스 검증 (선택):
@@ -158,5 +158,5 @@ WOKSE_REAL_SAVES_DIR="/path/to/saves" node tests/test_editor.cjs
 ## 7. 라이선스 및 데이터 출처
 
 - 본 프로젝트 소스 코드: **MIT License** (`LICENSE`)
-- Windows 배포본(`WorldOfKungfuSaveEditor-v1.0-Windows.zip`, `WorldOfKungfuSaveEditor-v1.0.exe`)에 포함·내장되는 Microsoft Edge WebView2 SDK(`1.0.4258.31`: `Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll`, `WebView2Loader.dll`)는 Microsoft의 BSD 스타일 재배포 라이선스를 따르며 `WebView2-LICENSE.txt`가 실행 파일 내부 리소스와 배포 ZIP 루트에 함께 포함됩니다.
+- Windows 배포본(`WorldOfKungfuSaveEditor-v1.1-Windows.zip`, `WorldOfKungfuSaveEditor-v1.1.exe`)에 포함·내장되는 Microsoft Edge WebView2 SDK(`1.0.4258.31`: `Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll`, `WebView2Loader.dll`)는 Microsoft의 BSD 스타일 재배포 라이선스를 따르며 `WebView2-LICENSE.txt`가 실행 파일 내부 리소스와 배포 ZIP 루트에 함께 포함됩니다.
 - `src/catalog-data.js`는 플레이어 세이브 파일의 숫자 식별자를 편집 화면에서 해석하기 위한 사실적 ID-명칭·수치 상한 매핑 메타데이터(`stats`, `origins`, `characters`, `kungfu`, `traits`, `items`)만 수록하며, 게임 실행 코드·스토리 대사 스크립트·이미지·오디오 에셋을 포함하지 않습니다.

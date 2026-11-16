@@ -3007,7 +3007,7 @@ def _read_script_order():
     return list(SCRIPT_ORDER)
 
 def _build_editor_html():
-    dist = SCRIPT_DIR / "dist" / "WorldOfKungfuSaveEditor-v1.0.html"
+    dist = SCRIPT_DIR / "dist" / "WorldOfKungfuSaveEditor-v1.1.html"
     if dist.exists():
         return dist.read_bytes()
     src_dir = SCRIPT_DIR / "src"
