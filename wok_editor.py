@@ -586,7 +586,7 @@ class WokSaveSession:
                     )
                 ):
                     raise ValueError("유효한 대강호 슬롯 세이브(GameData 54필드)가 아닙니다.")
-        for k in (6, 19, 20, 21, 40, 41, 42):
+        for k in (6, 19, 20, 21, 30, 40, 41, 42, 43):
             if not (
                 isinstance(ast.val[k], MPNode)
                 and (
@@ -598,7 +598,7 @@ class WokSaveSession:
                 )
             ):
                 raise ValueError("유효한 대강호 슬롯 세이브(GameData 54필드)가 아닙니다.")
-            if k in (20, 21, 40, 41, 42) and ast.val[k].tag in ("arr", "arr16", "arr32"):
+            if k in (20, 21, 40, 41, 42, 43) and ast.val[k].tag in ("arr", "arr16", "arr32"):
                 if not all(
                     isinstance(e, MPNode)
                     and e.tag in ("str", "str8", "str16", "str32")
@@ -716,6 +716,7 @@ class WokSaveSession:
         hero_name = ""
         if g[3].val:
             hero_name = self._hero_name(g[3].val[0])
+        special_wanted = [self._as_str(x) for x in (g[43].val if self._is_arr(g[43]) else [])]
         return {
             "heroName": hero_name,
             "playerid": self._as_str(g[9]),
@@ -732,6 +733,43 @@ class WokSaveSession:
             "item_count": len(g[19].val if self._is_arr(g[19]) else []),
             "party": [self._as_str(x) for x in (g[20].val if self._is_arr(g[20]) else [])],
             "follow": [self._as_str(x) for x in (g[21].val if self._is_arr(g[21]) else [])],
+            "m_ArenaWinCount": self._as_int(g[25]) if _is_int_node(g[25]) else 0,
+            "m_Arena_Rewards_JunShan": self._as_str(g[26]),
+            "simpleWantedInfos_count": len(g[30].val) if self._is_arr(g[30]) else 0,
+            "m_DaTianWangSiLevel": self._as_int(g[36]) if _is_int_node(g[36]) else 0,
+            "m_Arena_Rewards_DaTianWangSi": self._as_str(g[37]),
+            "m_DongShuFactionMember": self._as_str(g[38]),
+            "m_SpecialWantedList": special_wanted,
+            "m_JinWuFactionMember": self._as_str(g[47]),
+            "m_XiBoFactionMember": self._as_str(g[48]),
+            "m_BeiGuFactionMember": self._as_str(g[52]),
+        }
+
+    def get_extended_world(self) -> Dict[str, Any]:
+        g = self.root.val
+        simple_wanted = mp_to_plain(g[30]) if self._is_arr(g[30]) else []
+        special_wanted = [self._as_str(x) for x in (g[43].val if self._is_arr(g[43]) else [])]
+
+        def split_members(idx: int) -> List[str]:
+            text = self._as_str(g[idx])
+            return [part for part in text.split("|") if part] if text else []
+
+        return {
+            "m_ArenaWinCount": self._as_int(g[25]) if _is_int_node(g[25]) else 0,
+            "m_Arena_Rewards_JunShan": self._as_str(g[26]),
+            "simpleWantedInfos": simple_wanted if isinstance(simple_wanted, list) else [],
+            "simpleWantedInfos_count": len(simple_wanted) if isinstance(simple_wanted, list) else 0,
+            "m_DaTianWangSiLevel": self._as_int(g[36]) if _is_int_node(g[36]) else 0,
+            "m_Arena_Rewards_DaTianWangSi": self._as_str(g[37]),
+            "m_DongShuFactionMember": self._as_str(g[38]),
+            "dongShuMembers": split_members(38),
+            "m_SpecialWantedList": special_wanted,
+            "m_JinWuFactionMember": self._as_str(g[47]),
+            "jinWuMembers": split_members(47),
+            "m_XiBoFactionMember": self._as_str(g[48]),
+            "xiBoMembers": split_members(48),
+            "m_BeiGuFactionMember": self._as_str(g[52]),
+            "beiGuMembers": split_members(52),
         }
 
     def list_characters(self) -> List[Dict[str, Any]]:
@@ -896,7 +934,7 @@ class WokSaveSession:
                 elif st_f == "range":
                     errors.append("GameData[7] 문자열 플래그 값이 64비트 정수 범위를 벗어났습니다.")
                     break
-        for k in (6, 19, 20, 21, 40, 41, 42):
+        for k in (6, 19, 20, 21, 30, 40, 41, 42, 43):
             if not (
                 isinstance(g[k], MPNode)
                 and (
@@ -909,7 +947,7 @@ class WokSaveSession:
             ):
                 errors.append(f"GameData[{k}]은 nil 또는 배열이어야 합니다.")
                 continue
-            if k in (20, 21, 40, 41, 42) and self._is_arr(g[k]):
+            if k in (20, 21, 40, 41, 42, 43) and self._is_arr(g[k]):
                 if not all(
                     isinstance(e, MPNode)
                     and e.tag in ("str", "str8", "str16", "str32")
@@ -1015,12 +1053,35 @@ class WokSaveSession:
         for idx, name in ((16, "m_PlayRound"), (24, "Game_Mode"), (33, "m_ShovelDurable")):
             if len(g) > idx and not _is_int_node(g[idx]):
                 errors.append(f"{name} 필드가 정수가 아닙니다.")
+        for idx, name in ((25, "m_ArenaWinCount"), (36, "m_DaTianWangSiLevel")):
+            if len(g) > idx and isinstance(g[idx], MPNode) and g[idx].tag != "nil":
+                if not _is_int_node(g[idx]):
+                    errors.append(f"{name} 필드가 정수가 아닙니다.")
+                elif int(g[idx].val) < 0:
+                    errors.append(f"{name}가 음수입니다.")
         for idx in (8, 10, 51):
             if len(g) > idx and not (
                 isinstance(g[idx], MPNode)
                 and (g[idx].tag == "nil" or g[idx].tag in ("str", "str8", "str16", "str32"))
             ):
                 errors.append(f"GameData[{idx}]은 nil 또는 문자열이어야 합니다.")
+        for idx, name in ((26, "m_Arena_Rewards_JunShan"), (37, "m_Arena_Rewards_DaTianWangSi")):
+            if len(g) > idx and isinstance(g[idx], MPNode) and g[idx].tag != "nil":
+                if g[idx].tag not in ("str", "str8", "str16", "str32"):
+                    errors.append(f"{name} 필드가 nil 또는 문자열이어야 합니다.")
+                elif "\r" in str(g[idx].val) or "\n" in str(g[idx].val):
+                    errors.append(f"{name}에 줄바꿈을 사용할 수 없습니다.")
+        for idx, name in (
+            (38, "m_DongShuFactionMember"),
+            (47, "m_JinWuFactionMember"),
+            (48, "m_XiBoFactionMember"),
+            (52, "m_BeiGuFactionMember"),
+        ):
+            if len(g) > idx and isinstance(g[idx], MPNode) and g[idx].tag != "nil":
+                if g[idx].tag not in ("str", "str8", "str16", "str32"):
+                    errors.append(f"{name} 필드가 nil 또는 문자열이어야 합니다.")
+                elif any(ch in str(g[idx].val) for ch in ("\r", "\n", ",", "&")):
+                    errors.append(f"{name}에 쉼표(,), &, 줄바꿈을 사용할 수 없습니다.")
         def _check_int_nodes(node, depth=0):
             if depth > MAX_MSGPACK_DEPTH:
                 errors.append("MessagePack 중첩 깊이 초과")
@@ -1068,7 +1129,69 @@ class WokSaveSession:
                 warnings.append(f"동적 무공 ID를 카탈로그에서 찾지 못했습니다: {cid}")
         return {"ok": not errors, "errors": errors, "warnings": warnings}
 
-    def set_world(self, money=None, epiphany=None, play_round=None, field_speed=None, shovel_durable=None, game_mode=None, born_id=None, scene_before=None) -> None:
+    @staticmethod
+    def _normalize_single_line_str(val: Any, label: str) -> str:
+        text = "" if val is None else str(val)
+        if "\r" in text or "\n" in text:
+            raise ValueError(f"{label}에 줄바꿈을 사용할 수 없습니다.")
+        return text
+
+    @staticmethod
+    def _normalize_faction_members(val: Any, label: str) -> str:
+        if val is None:
+            return ""
+        tokens = val.split("|") if isinstance(val, str) else list(val)
+        out: List[str] = []
+        seen: set[str] = set()
+        for item in tokens:
+            tok = str(item).strip()
+            if not tok:
+                continue
+            if any(ch in tok for ch in ("\r", "\n", ",", "&")) or any(ch.isspace() for ch in tok):
+                raise ValueError(f"{label} ID에 공백, 쉼표(,), &, 줄바꿈을 사용할 수 없습니다: {tok!r}")
+            if tok not in seen:
+                seen.add(tok)
+                out.append(tok)
+        return "|".join(out)
+
+    @staticmethod
+    def _normalize_special_wanted_list(val: Any) -> List[str]:
+        if val is None:
+            return []
+        tokens = val.split("|") if isinstance(val, str) else list(val)
+        out: List[str] = []
+        seen: set[str] = set()
+        for item in tokens:
+            tok = str(item).strip()
+            if not tok:
+                continue
+            if any(ch in tok for ch in ("|", ",", "&", "\r", "\n")):
+                raise ValueError(f"특수 현상수배 ID에 구분자(|, &, ,)나 줄바꿈을 사용할 수 없습니다: {tok!r}")
+            if tok not in seen:
+                seen.add(tok)
+                out.append(tok)
+        return out
+
+    def set_world(
+        self,
+        money=None,
+        epiphany=None,
+        play_round=None,
+        field_speed=None,
+        shovel_durable=None,
+        game_mode=None,
+        born_id=None,
+        scene_before=None,
+        arena_win_count=None,
+        arena_rewards_junshan=None,
+        datianwangsi_level=None,
+        arena_rewards_datianwangsi=None,
+        dongshu_members=None,
+        jinwu_members=None,
+        xibo_members=None,
+        beigu_members=None,
+        special_wanted_list=None,
+    ) -> None:
         g = self.root.val
         if money is not None:
             set_mp_int(g[14], money)
@@ -1086,6 +1209,36 @@ class WokSaveSession:
             set_mp_str(g[8], str(born_id))
         if scene_before is not None:
             set_mp_str(g[10], str(scene_before))
+        if arena_win_count is not None:
+            if isinstance(arena_win_count, bool) or not isinstance(arena_win_count, int):
+                raise ValueError("m_ArenaWinCount는 정수여야 합니다.")
+            if arena_win_count < 0:
+                raise ValueError("m_ArenaWinCount는 0 이상이어야 합니다.")
+            set_mp_int(g[25], arena_win_count)
+        if arena_rewards_junshan is not None:
+            set_mp_str(g[26], self._normalize_single_line_str(arena_rewards_junshan, "m_Arena_Rewards_JunShan"))
+        if datianwangsi_level is not None:
+            if isinstance(datianwangsi_level, bool) or not isinstance(datianwangsi_level, int):
+                raise ValueError("m_DaTianWangSiLevel은 정수여야 합니다.")
+            if datianwangsi_level < 0:
+                raise ValueError("m_DaTianWangSiLevel은 0 이상이어야 합니다.")
+            set_mp_int(g[36], datianwangsi_level)
+        if arena_rewards_datianwangsi is not None:
+            set_mp_str(g[37], self._normalize_single_line_str(arena_rewards_datianwangsi, "m_Arena_Rewards_DaTianWangSi"))
+        if dongshu_members is not None:
+            set_mp_str(g[38], self._normalize_faction_members(dongshu_members, "m_DongShuFactionMember"))
+        if jinwu_members is not None:
+            set_mp_str(g[47], self._normalize_faction_members(jinwu_members, "m_JinWuFactionMember"))
+        if xibo_members is not None:
+            set_mp_str(g[48], self._normalize_faction_members(xibo_members, "m_XiBoFactionMember"))
+        if beigu_members is not None:
+            set_mp_str(g[52], self._normalize_faction_members(beigu_members, "m_BeiGuFactionMember"))
+        if special_wanted_list is not None:
+            items = self._normalize_special_wanted_list(special_wanted_list)
+            node = g[43]
+            node.tag = "arr"
+            node.val = [MPNode("str", x) for x in items]
+            node.raw = None
 
     def set_char_basic(self, chara_id, hero_name=None, hp=None, mp=None, lv=None, exp=None, relationship=None, talent=None, nick_name=None, guild=None, training_id=None) -> None:
         chara = self._find_character_node(chara_id)
@@ -1597,7 +1750,7 @@ def create_demo_dat_bytes() -> bytes:
     ]
     inventory = [arr([s("999"), i(0)]), arr([s("10001"), i(10)])]
     root = arr([
-        s("demo"), i(1), s("20240101000000"), arr(chars), s(""), s(""), arr([]), s(""), s("1"), s("9001"), s("0"), i(0), i(0), i(0), i(999999), i(999999), i(1), f(1.0), i(0), arr(inventory), arr([s("9001"), s("105"), s("312")]), arr([s("105"), s("312")]), i(0), i(0), i(1), i(0), i(0), i(0), i(0), i(0), i(0), i(0), i(0), i(100), s(""), i(0), i(0), i(0), i(0), i(0), arr([]), arr([]), arr([]), s(""), s(""), s(""), s(""), s(""), s(""), s(""), s(""), s("1.0.0"), i(0), i(0),
+        s("demo"), i(1), s("20240101000000"), arr(chars), s(""), s(""), arr([]), s(""), s("1"), s("9001"), s("0"), i(0), i(0), i(0), i(999999), i(999999), i(1), f(1.0), i(0), arr(inventory), arr([s("9001"), s("105"), s("312")]), arr([s("105"), s("312")]), i(0), i(0), i(1), i(0), s("000000000000000"), i(0), i(0), i(0), arr([]), i(0), i(0), i(100), s(""), i(0), i(0), s(""), s("1202|607"), i(0), arr([]), arr([]), arr([]), arr([]), s(""), s(""), s(""), s("9018|502"), s("202|401|402|403"), s(""), s(""), s("1.0.0"), s("205"), i(0),
     ])
     return encode_dat_bytes(root)
 
@@ -2677,6 +2830,24 @@ def _apply_edit(session, args):
         world["shovel_durable"] = args.shovel
     if args.origin is not None:
         world["born_id"] = args.origin
+    if getattr(args, "arena_wins", None) is not None:
+        world["arena_win_count"] = args.arena_wins
+    if getattr(args, "junshan_rewards", None) is not None:
+        world["arena_rewards_junshan"] = args.junshan_rewards
+    if getattr(args, "datianwangsi_level", None) is not None:
+        world["datianwangsi_level"] = args.datianwangsi_level
+    if getattr(args, "datianwangsi_rewards", None) is not None:
+        world["arena_rewards_datianwangsi"] = args.datianwangsi_rewards
+    if getattr(args, "dongshu_members", None) is not None:
+        world["dongshu_members"] = args.dongshu_members
+    if getattr(args, "jinwu_members", None) is not None:
+        world["jinwu_members"] = args.jinwu_members
+    if getattr(args, "xibo_members", None) is not None:
+        world["xibo_members"] = args.xibo_members
+    if getattr(args, "beigu_members", None) is not None:
+        world["beigu_members"] = args.beigu_members
+    if getattr(args, "special_wanted", None) is not None:
+        world["special_wanted_list"] = args.special_wanted
     if world:
         session.set_world(**world)
     target_char = args.char if args.char is not None else (session.summary().get("playerid") or "9001")
@@ -3100,6 +3271,15 @@ def build_parser():
     pe.add_argument("--speed", type=float)
     pe.add_argument("--shovel", type=int)
     pe.add_argument("--origin")
+    pe.add_argument("--arena-wins", type=int)
+    pe.add_argument("--datianwangsi-level", type=int)
+    pe.add_argument("--junshan-rewards")
+    pe.add_argument("--datianwangsi-rewards")
+    pe.add_argument("--dongshu-members")
+    pe.add_argument("--jinwu-members")
+    pe.add_argument("--xibo-members")
+    pe.add_argument("--beigu-members")
+    pe.add_argument("--special-wanted")
     pe.add_argument("--char")
     pe.add_argument("--name")
     pe.add_argument("--level", type=int)

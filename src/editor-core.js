@@ -50,6 +50,38 @@ const parseCustomEquip=raw=>{const p=s(raw).split(';');return{id:s(p[0]),name:s(
 const parseCustomKungfu=raw=>{const p=s(raw).split(';');return{id:s(p[0]),star:toInt(p[1],0),name:s(p[2]),nameTrans:s(p[3]),ko:s(p[2]),cn:s(p[3]),en:s(p[3]),icon:s(p[4]),bookIcon:s(p[5]),origin:s(p[6]),lv:toInt(p[7],0),style:s(p[8]),raw:s(raw),isCustom:true,kind:'kungfu',maxLv:20,dmg:0,mp:0};};
 const parseCustomItem=raw=>{const p=s(raw).split(';');return{id:s(p[0]),name:s(p[1]),nameTrans:s(p[2]),bookIcon:s(p[3]),style:s(p[4]),star:toInt(p[5],0),value:toInt(p[6],0),ko:s(p[1]),cn:s(p[2]),en:s(p[2]),price:toInt(p[6],0),raw:s(raw),isCustom:true,kind:'item'};};
 const customName=(o,id)=>o.id===s(id)?o:(o.name||o.ko||o.id);
+function normalizeSingleLineStr(v,label){
+ const str=s(v);
+ if(/[\r\n]/.test(str))throw new Error((label||'문자열')+'에 줄바꿈을 사용할 수 없습니다.');
+ return str;
+}
+function normalizeFactionMembers(v,label){
+ const rawList=Array.isArray(v)?v.map(x=>s(x)):s(v).split('|');
+ const out=[],seen=new Set();
+ for(const item of rawList){
+  const tok=item.trim();
+  if(!tok)continue;
+  if(/[\r\n,&\s]/.test(tok))throw new Error((label||'문파 구성원')+' ID에 공백, 쉼표(,), &, 줄바꿈을 사용할 수 없습니다.');
+  if(!seen.has(tok)){seen.add(tok);out.push(tok);}
+ }
+ return out.join('|');
+}
+function normalizeSpecialWantedList(v){
+ const rawList=Array.isArray(v)?v.map(x=>s(x)):s(v).split('|');
+ const out=[],seen=new Set();
+ for(const item of rawList){
+  const tok=item.trim();
+  if(!tok)continue;
+  if(/[\r\n|,&]/.test(tok))throw new Error('특수 현상수배 ID에 구분자(|, &, ,)나 줄바꿈을 사용할 수 없습니다.');
+  if(!seen.has(tok)){seen.add(tok);out.push(tok);}
+ }
+ return out;
+}
+function setStrArrNode(node,items){
+ const arrNodes=items.map(x=>WokMsgPack.makeStr(x));
+ node.t=arrNodes.length<=15?'arr':arrNodes.length<=65535?'arr16':'arr32';
+ node.v=arrNodes;node.raw=null;
+}
 function assertAst(ast){
  if(isArr(ast)&&ast.v.length===26)throw new Error('이 파일은 환경설정 데이터(configdata.dat)입니다. 슬롯 세이브 파일(bigbang1data.dat ~ bigbang24data.dat)을 열어 주세요.');
  const fail=()=>new Error('유효한 대강호 슬롯 세이브(GameData 54필드)가 아닙니다. bigbang1data.dat ~ bigbang24data.dat 파일을 선택해 주세요.');
@@ -58,8 +90,8 @@ function assertAst(ast){
   if(!(isArr(c)&&c.v.length===CHARA_LEN&&isStrNode(c.v[1])&&c.v[1].v!==''))throw fail();
   for(const k of [15,16,18,19,20,22]){ if(!(isNil(c.v[k])||(isArr(c.v[k])&&c.v[k].v.every(isStrNode))))throw fail(); }
  }
- for(const k of [6,19,20,21,40,41,42]){ if(!(isNil(ast.v[k])||isArr(ast.v[k])))throw fail(); }
- for(const k of [20,21,40,41,42]){ if(isArr(ast.v[k])&&!ast.v[k].v.every(isStrNode))throw fail(); }
+ for(const k of [6,19,20,21,30,40,41,42,43]){ if(!(isNil(ast.v[k])||isArr(ast.v[k])))throw fail(); }
+ for(const k of [20,21,40,41,42,43]){ if(isArr(ast.v[k])&&!ast.v[k].v.every(isStrNode))throw fail(); }
  for(const k of [6,19]){ if(isArr(ast.v[k])){ for(const n of ast.v[k].v){ if(!(isArr(n)&&n.v.length>=2&&isStrNode(n.v[0])&&isIntNode(n.v[1])))throw fail(); } } }
 }
 function ensureArr(node){if(!node)throw new Error('배열 노드가 없습니다.');if(!isArr(node)){node.t='arr';node.v=[];node.raw=null;}return node.v;}
@@ -116,6 +148,7 @@ Session.prototype.getDynamicCatalogs=function(){return this.catalogs;};
 Session.prototype.getSummary=function(){
  const a=this.ast.v,origins=findMap(WokCatalog.origins);
  const hero=getHero(this),hname=nv(hero&&hero.v[25])?sv(hero.v[25]):'';
+ const specialWantedList=(av(a[43])||[]).map(sv);
  return{
   fileName:this.fileName,key:sv(a[0]),playerId:sv(a[9]),heroName:heroName(this.ast)||hname,
   originId:sv(a[8]),originKo:(origins.get(sv(a[8]))||{}).ko||'',scene:sv(a[10]),
@@ -123,7 +156,42 @@ Session.prototype.getSummary=function(){
   shovelDurable:iv(a[33]),gameMode:iv(a[24]),version:sv(a[51]),
   charaCount:av(a[3])?av(a[3]).length:0,fullTeamCount:av(a[20])?av(a[20]).length:0,
   followCount:av(a[21])?av(a[21]).length:0,itemCount:av(a[19])?av(a[19]).length:0,
-  customEquipCount:av(a[40])?av(a[40]).length:0,customKungfuCount:av(a[41])?av(a[41]).length:0
+  customEquipCount:av(a[40])?av(a[40]).length:0,customKungfuCount:av(a[41])?av(a[41]).length:0,
+  arenaWinCount:isIntNode(a[25])?iv(a[25]):0,
+  arenaRewardsJunShan:sv(a[26]),
+  wantedCount:av(a[30])?av(a[30]).length:0,
+  daTianWangSiLevel:isIntNode(a[36])?iv(a[36]):0,
+  arenaRewardsDaTianWangSi:sv(a[37]),
+  dongShuFactionMember:sv(a[38]),
+  specialWantedList:specialWantedList,
+  specialWantedCount:specialWantedList.length,
+  jinWuFactionMember:sv(a[47]),
+  xiBoFactionMember:sv(a[48]),
+  beiGuFactionMember:sv(a[52])
+ };
+};
+Session.prototype.getExtendedWorld=function(){
+ const a=this.ast.v;
+ const simpleWantedInfos=isArr(a[30])?WokMsgPack.astToPlain(a[30]):[];
+ const specialWantedList=(av(a[43])||[]).map(sv);
+ const splitMembers=idx=>sv(a[idx]).split('|').filter(Boolean);
+ return{
+  arenaWinCount:isIntNode(a[25])?iv(a[25]):0,
+  arenaRewardsJunShan:sv(a[26]),
+  simpleWantedInfos:Array.isArray(simpleWantedInfos)?simpleWantedInfos:[],
+  wantedCount:av(a[30])?av(a[30]).length:0,
+  daTianWangSiLevel:isIntNode(a[36])?iv(a[36]):0,
+  arenaRewardsDaTianWangSi:sv(a[37]),
+  dongShuFactionMember:sv(a[38]),
+  dongShuMembers:splitMembers(38),
+  specialWantedList:specialWantedList,
+  specialWantedCount:specialWantedList.length,
+  jinWuFactionMember:sv(a[47]),
+  jinWuMembers:splitMembers(47),
+  xiBoFactionMember:sv(a[48]),
+  xiBoMembers:splitMembers(48),
+  beiGuFactionMember:sv(a[52]),
+  beiGuMembers:splitMembers(52)
  };
 };
 Session.prototype.listCharacters=function(){
@@ -179,6 +247,23 @@ Session.prototype.updateWorld=function(patch){
  if('gameMode' in p)WokMsgPack.setInt(a[24],toBigIntChecked(p.gameMode,'게임 모드'));
  if('originId' in p)WokMsgPack.setStr(a[8],s(p.originId));
  if('scene' in p)WokMsgPack.setStr(a[10],s(p.scene));
+ if('arenaWinCount' in p){
+  const v=toBigIntChecked(p.arenaWinCount,'투기장 연승 수');
+  if(v<0n)throw new Error('투기장 연승 수는 0 이상이어야 합니다.');
+  WokMsgPack.setInt(a[25],v);
+ }
+ if('arenaRewardsJunShan' in p)WokMsgPack.setStr(a[26],normalizeSingleLineStr(p.arenaRewardsJunShan,'군산 투기장 보상'));
+ if('daTianWangSiLevel' in p){
+  const v=toBigIntChecked(p.daTianWangSiLevel,'대천왕사 층수');
+  if(v<0n)throw new Error('대천왕사 층수는 0 이상이어야 합니다.');
+  WokMsgPack.setInt(a[36],v);
+ }
+ if('arenaRewardsDaTianWangSi' in p)WokMsgPack.setStr(a[37],normalizeSingleLineStr(p.arenaRewardsDaTianWangSi,'대천왕사 보상'));
+ if('dongShuFactionMember' in p)WokMsgPack.setStr(a[38],normalizeFactionMembers(p.dongShuFactionMember,'동숙파 구성원'));
+ if('jinWuFactionMember' in p)WokMsgPack.setStr(a[47],normalizeFactionMembers(p.jinWuFactionMember,'금오문 구성원'));
+ if('xiBoFactionMember' in p)WokMsgPack.setStr(a[48],normalizeFactionMembers(p.xiBoFactionMember,'서박문 구성원'));
+ if('beiGuFactionMember' in p)WokMsgPack.setStr(a[52],normalizeFactionMembers(p.beiGuFactionMember,'북고문 구성원'));
+ if('specialWantedList' in p)setStrArrNode(a[43],normalizeSpecialWantedList(p.specialWantedList));
  return this.getSummary();
 };
 Session.prototype.updateCharacterBasic=function(charaId,patch){
@@ -338,14 +423,17 @@ Session.prototype.validate=function(){
  if(!isStrNode(a[9])||a[9].v==='')errors.push('플레이어 ID 필드가 유효한 문자열이 아닙니다.');
  if(!(isNil(a[7])||isStrNode(a[7])))errors.push('문자열 플래그 필드가 nil 또는 문자열이 아닙니다.');
  else if(isStrNode(a[7])&&a[7].v!==''){a[7].v.split('|').forEach((seg,i)=>{if(!seg)return;const kv=seg.split('&');if(kv.length!==2||!kv[0]||!isAsciiSignedDigits(kv[1])){errors.push(`문자열 플래그 ${i} 구조가 올바르지 않습니다.`);return;}const bv=BigInt(kv[1]);if(bv<MIN_I64||bv>MAX_U64)errors.push(`문자열 플래그 ${i} 값이 64비트 정수 범위를 벗어났습니다.`);});}
- for(const k of [6,19,20,21,40,41,42]){if(!(isNil(a[k])||isArr(a[k])))errors.push(`GameData 필드 [${k}]가 nil 또는 배열이 아닙니다.`);}
- for(const k of [20,21,40,41,42]){if(isArr(a[k])&&!a[k].v.every(isStrNode))errors.push(`GameData 필드 [${k}] 원소가 문자열이 아닙니다.`);}
+ for(const k of [6,19,20,21,30,40,41,42,43]){if(!(isNil(a[k])||isArr(a[k])))errors.push(`GameData 필드 [${k}]가 nil 또는 배열이 아닙니다.`);}
+ for(const k of [20,21,40,41,42,43]){if(isArr(a[k])&&!a[k].v.every(isStrNode))errors.push(`GameData 필드 [${k}] 원소가 문자열이 아닙니다.`);}
  if(isArr(a[6])){a[6].v.forEach((n,i)=>{if(!(isArr(n)&&n.v.length>=2&&isStrNode(n.v[0])&&n.v[0].v!==''&&isIntNode(n.v[1])))errors.push(`정수 플래그 ${i} 구조가 올바르지 않습니다.`);});}
  if(!isIntNode(a[14]))errors.push('돈 필드가 정수가 아닙니다.');else if(bi(a[14])<0n)errors.push('돈이 음수입니다.');
  if(!isIntNode(a[15]))errors.push('깨달음 필드가 정수가 아닙니다.');else if(bi(a[15])<0n)errors.push('깨달음이 음수입니다.');
  if(!isFiniteF32Node(a[17]))errors.push('이동속도가 유한한 float32 숫자가 아닙니다.');
  for(const k of [16,24,33]){if(!isIntNode(a[k]))errors.push(`GameData 필드 [${k}]가 정수가 아닙니다.`);}
+ for(const k of [25,36]){if(!isNil(a[k])){if(!isIntNode(a[k]))errors.push(`GameData 필드 [${k}]가 정수가 아닙니다.`);else if(bi(a[k])<0n)errors.push(`GameData 필드 [${k}]가 음수입니다.`);}}
  for(const k of [8,10,51]){if(!(isNil(a[k])||isStrNode(a[k])))errors.push(`GameData 필드 [${k}]가 nil 또는 문자열이 아닙니다.`);}
+ for(const k of [26,37]){if(!(isNil(a[k])||isStrNode(a[k])))errors.push(`GameData 필드 [${k}]가 nil 또는 문자열이 아닙니다.`);else if(isStrNode(a[k])&&/[\r\n]/.test(a[k].v))errors.push(`GameData 필드 [${k}]에 줄바꿈을 사용할 수 없습니다.`);}
+ for(const k of [38,47,48,52]){if(!(isNil(a[k])||isStrNode(a[k])))errors.push(`GameData 필드 [${k}]가 nil 또는 문자열이 아닙니다.`);else if(isStrNode(a[k])&&/[\r\n,&]/.test(a[k].v))errors.push(`GameData 필드 [${k}] 문파 구성원에 쉼표(,), &, 줄바꿈을 사용할 수 없습니다.`);}
  if(isArr(a[21])&&a[21].v.length>5)errors.push('FollowList가 5명을 초과합니다.');
  if(isArr(a[21])&&isStrNode(a[9])&&a[9].v!==''&&a[21].v.some(x=>sv(x)===a[9].v))errors.push('FollowList에 주인공(playerid)이 포함되어 있습니다.');
  if(isArr(a[19])){a[19].v.forEach((n,i)=>{if(!(isArr(n)&&n.v.length>=2)){errors.push(`아이템 ${i} 구조가 올바르지 않습니다.`);return;}const p=n.v,iid=isStrNode(p[0])?p[0].v:'';if(!isStrNode(p[0])||p[0].v==='')errors.push(`아이템 ${i} ID가 비어 있습니다.`);if(!isIntNode(p[1]))errors.push(`아이템 ${i} 수량이 정수가 아닙니다.`);else if(bi(p[1])<0n)errors.push(`아이템 ${i} 수량이 음수입니다.`);if(iid&&!this.catalogs.resolveItem(iid)&&iid!=='999')warnings.push(`아이템 ${i} ID가 카탈로그에 없습니다: ${iid}`);});}
@@ -426,13 +514,22 @@ function buildDemo(){
  root[21]=WokMsgPack.makeArr([WokMsgPack.makeStr('105'),WokMsgPack.makeStr('312')]);
  root[24]=WokMsgPack.makeInt(0);
  root[25]=WokMsgPack.makeInt(0);
+ root[26]=WokMsgPack.makeStr('000000000000000');
+ root[30]=WokMsgPack.makeArr([]);
  root[33]=WokMsgPack.makeInt(100);
+ root[36]=WokMsgPack.makeInt(0);
+ root[37]=WokMsgPack.makeStr('');
+ root[38]=WokMsgPack.makeStr('1202|607');
  root[40]=WokMsgPack.makeArr([]);
  root[41]=WokMsgPack.makeArr([]);
  root[42]=WokMsgPack.makeArr([]);
+ root[43]=WokMsgPack.makeArr([]);
  root[45]=WokMsgPack.makeBool(true);
  root[46]=WokMsgPack.makeNil();
+ root[47]=WokMsgPack.makeStr('9018|502');
+ root[48]=WokMsgPack.makeStr('202|401|402|403');
  root[51]=WokMsgPack.makeStr(VERSION);
+ root[52]=WokMsgPack.makeStr('205');
  return WokMsgPack.makeArr(root);
 }
 function createDemoDatSync(){return WokMsgPack.encodeDatSync(buildDemo());}

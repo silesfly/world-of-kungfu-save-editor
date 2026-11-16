@@ -109,6 +109,7 @@ dialog#picker-dialog::backdrop{background:rgba(10,8,6,.58);backdrop-filter:blur(
       <div id="summary-cards" class="grid-cards"></div>
       <div id="preset-grid" class="preset-grid"></div>
       <div id="world-form" class="card"></div>
+      <div id="world-extended-form" class="card"></div>
     </section>
 
     <section id="panel-chara" class="panel" role="tabpanel" aria-labelledby="tab-btn-chara" hidden>
@@ -156,7 +157,10 @@ dialog#picker-dialog::backdrop{background:rgba(10,8,6,.58);backdrop-filter:blur(
 
     <section id="panel-atlas" class="panel" role="tabpanel" aria-labelledby="tab-btn-atlas" hidden>
       <div id="validate-box" class="card"></div>
-      <div id="atlas-box" class="grid-cards"></div>
+      <div class="toolbar-row">
+        <input id="atlas-search" type="search" placeholder="코드 도감·공식·키워드 검색...">
+      </div>
+      <div id="atlas-box" class="card"></div>
       <div id="raw-json-box" class="card"></div>
     </section>
   </main>

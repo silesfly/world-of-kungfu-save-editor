@@ -34,6 +34,7 @@
   let invSearch = '';
   let invCat = 'all';
   let flagSearch = '';
+  let atlasSearch = '';
   let pickerHandler = null;
   let sourceKind = 'none';
   let serverLoadedName = '';
@@ -93,7 +94,7 @@
     setFileBadge();
     renderDirtyBadge();
     if (!session) {
-      ['summary-cards', 'preset-grid', 'world-form', 'chara-select', 'chara-basic-box', 'stat-group-bar', 'stat-table-wrap', 'kungfu-box', 'trait-box', 'equip-slot-box', 'inv-table-wrap', 'forged-box', 'party-box', 'flag-box', 'atlas-box', 'validate-box', 'raw-json-box'].forEach((id) => { const el = $(id); if (el) el.innerHTML = ''; });
+      ['summary-cards', 'preset-grid', 'world-form', 'world-extended-form', 'chara-select', 'chara-basic-box', 'stat-group-bar', 'stat-table-wrap', 'kungfu-box', 'trait-box', 'equip-slot-box', 'inv-table-wrap', 'forged-box', 'party-box', 'flag-box', 'atlas-box', 'validate-box', 'raw-json-box'].forEach((id) => { const el = $(id); if (el) el.innerHTML = ''; });
       return;
     }
     try { renderSummary(); } catch (e) { setStatus('요약 렌더 오류: ' + e.message, true); }
@@ -225,7 +226,11 @@
       ['출생', s.originKo], ['장면', s.scene], ['돈', s.money], ['깨달음', s.epiphany],
       ['라운드', s.playRound], ['이동속도', s.moveSpeed], ['삽 내구도', s.shovelDurable], ['모드', s.gameMode],
       ['버전', s.version], ['캐릭터', s.charaCount], ['풀팀', s.fullTeamCount], ['추종', s.followCount],
-      ['아이템', s.itemCount], ['커스텀 장비', s.customEquipCount], ['커스텀 무공', s.customKungfuCount]
+      ['아이템', s.itemCount], ['커스텀 장비', s.customEquipCount], ['커스텀 무공', s.customKungfuCount],
+      ['투기장 연승', s.arenaWinCount], ['대천왕사 층수', s.daTianWangSiLevel],
+      ['현상수배 / 특수', String(s.wantedCount || 0) + ' / ' + String(s.specialWantedCount || 0)],
+      ['동숙파', s.dongShuFactionMember || '없음'], ['금오문', s.jinWuFactionMember || '없음'],
+      ['서박문', s.xiBoFactionMember || '없음'], ['북고문', s.beiGuFactionMember || '없음']
     ];
     const el = $('summary-cards');
     if (el) el.innerHTML = cards.map((x) => '<div class="summary-card"><div class="k">' + esc(x[0]) + '</div><div class="v">' + esc(x[1]) + '</div></div>').join('');
@@ -269,6 +274,29 @@
         }
       };
       wf.querySelectorAll('input,select').forEach((el) => el.addEventListener('change', onWorld));
+    }
+    const wef = $('world-extended-form');
+    if (wef) {
+      const specialStr = arr(s.specialWantedList).join('|');
+      wef.innerHTML = '<h3>투기장 · 문파 · 현상수배 (REA 확장 필드)</h3><div class="form-grid">' +
+        '<label>투기장 연승 (m_ArenaWinCount)<input name="arenaWinCount" type="number" min="0" value="' + esc(s.arenaWinCount) + '"></label>' +
+        '<label>대천왕사 층수 (m_DaTianWangSiLevel)<input name="daTianWangSiLevel" type="number" min="0" value="' + esc(s.daTianWangSiLevel) + '"></label>' +
+        '<label>군산 보상 (m_Arena_Rewards_JunShan)<input name="arenaRewardsJunShan" value="' + esc(s.arenaRewardsJunShan) + '"></label>' +
+        '<label>대천왕사 보상 (m_Arena_Rewards_DaTianWangSi)<input name="arenaRewardsDaTianWangSi" value="' + esc(s.arenaRewardsDaTianWangSi) + '"></label>' +
+        '<label>동숙파 (m_DongShuFactionMember)<input name="dongShuFactionMember" value="' + esc(s.dongShuFactionMember) + '"></label>' +
+        '<label>금오문 (m_JinWuFactionMember)<input name="jinWuFactionMember" value="' + esc(s.jinWuFactionMember) + '"></label>' +
+        '<label>서박문 (m_XiBoFactionMember)<input name="xiBoFactionMember" value="' + esc(s.xiBoFactionMember) + '"></label>' +
+        '<label>북고문 (m_BeiGuFactionMember)<input name="beiGuFactionMember" value="' + esc(s.beiGuFactionMember) + '"></label>' +
+        '<label>특수 현상수배 (m_SpecialWantedList, | 구분)<input name="specialWantedList" value="' + esc(specialStr) + '"></label>' +
+        '<label>일반 현상수배 (simpleWantedInfos)<input value="' + esc(String(s.wantedCount || 0) + '건') + '" readonly></label>' +
+        '</div>';
+      wef.querySelectorAll('input[name]').forEach((el) => {
+        el.addEventListener('change', () => {
+          const n = el.name;
+          const val = (n === 'arenaWinCount' || n === 'daTianWangSiLevel') ? intInput(el.value) : el.value;
+          applyMutation(() => session.updateWorld({ [n]: val }), n + ' 변경');
+        });
+      });
     }
   };
   const renderChara = (skipCascade) => {
@@ -554,11 +582,15 @@
   };
   const renderAtlas = () => {
     if (!session) return;
+    const as = $('atlas-search');
+    if (as && !as.__wokBound) { as.__wokBound = true; as.addEventListener('input', () => { atlasSearch = as.value || ''; renderAtlas(); }); }
     const box = $('atlas-box');
     if (box) {
       const atlas = arr(C.codeAtlas);
-      box.innerHTML = '<table class="data-table"><thead><tr><th>ID</th><th>항목 · 구조</th><th>세부 규격 · 공식</th></tr></thead><tbody>' +
-        (atlas.length ? atlas.map((a) => '<tr><td>' + esc(a.id) + '</td><td>' + esc(a.title || a.ko || '') + '</td><td>' + esc(a.detail || a.cn || a.en || '') + '</td></tr>').join('') : '<tr><td colspan="3">도감 없음</td></tr>') + '</tbody></table>';
+      const q = String(atlasSearch || '').trim().toLowerCase();
+      const shown = atlas.filter((a) => !q || [a.id, a.title, a.detail, a.ko, a.cn, a.en].some((v) => String(v == null ? '' : v).toLowerCase().indexOf(q) >= 0));
+      box.innerHTML = '<h3>REA 코드 도감 (' + shown.length + '/' + atlas.length + ')</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>항목 · 구조</th><th>세부 규격 · 공식</th></tr></thead><tbody>' +
+        (shown.length ? shown.map((a) => '<tr><td>' + esc(a.id) + '</td><td>' + esc(a.title || a.ko || '') + '</td><td>' + esc(a.detail || a.cn || a.en || '') + '</td></tr>').join('') : '<tr><td colspan="3">도감 없음</td></tr>') + '</tbody></table></div>';
     }
     const vb = $('validate-box');
     if (vb) {

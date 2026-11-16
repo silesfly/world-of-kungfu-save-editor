@@ -43,6 +43,7 @@ python3 wok_editor.py inspect bigbang1data.dat
 python3 wok_editor.py validate bigbang1data.dat
 python3 wok_editor.py presets
 python3 wok_editor.py edit bigbang1data.dat --preset rich_epiphany --output bigbang1data.edited.dat
+python3 wok_editor.py edit bigbang1data.dat --arena-wins 5 --datianwangsi-level 3 --dongshu-members "1202|607" --special-wanted "sp_1|sp_2"
 python3 wok_editor.py serve --port 8765
 ```
 
@@ -75,6 +76,7 @@ python3 wok_editor.py serve --port 8765
 ### 탭 1 — 월드
 - 은량, 돈오점, 회차, 필드 이동속도, 삽 내구도
 - 출신 시나리오 선택
+- REA 확장 `GameData` 필드 조회·편집: 투기장 연승(`m_ArenaWinCount`), 대천왕사 층수(`m_DaTianWangSiLevel`), 군산·대천왕사 보상(`m_Arena_Rewards_JunShan` / `m_Arena_Rewards_DaTianWangSi`), 4대 문파 구성원(`m_DongShuFactionMember`, `m_JinWuFactionMember`, `m_XiBoFactionMember`, `m_BeiGuFactionMember`), 특수 현상수배(`m_SpecialWantedList`) 및 일반 현상수배(`simpleWantedInfos`) 건수 요약(원본 MessagePack 바이트 보존)
 
 ### 탭 2 — 주인공
 - 성명(`12003`), 레벨, 체력, 내력, 특성점수, 호감도
@@ -96,7 +98,9 @@ python3 wok_editor.py serve --port 8765
 - 월드 플래그 (`flag` 정수 플래그 & `strFlagDatas` 문자열 플래그)
 
 ### 탭 6 — 코드 도감
-- REA 엔진 코드 도감 (`Assembly-CSharp.dll` 기반)
+- REA 엔진 코드 도감 (`Assembly-CSharp.dll` 기반 9개 항목 + 키워드 검색)
+  - `XmlSaver`: `COMPRESSED:` GZip+MessagePack, `RijndaelManaged`(키 `91429750903495708124650874157912`, ECB/PKCS7), `DeserializeObject`(`<?xml` vs `MessagePackSerializer`)
+  - `InjuryCalManager.CalAttackDamage` / `CalBeHitInjurt`: `Style 701`(음률 `Melody`), `Style 801`(취권 `1+Drunk/25`), 내상 `saturate(Hurt/255)` 유효 내력 차감, 취중 회피 `(Drunk/100)*(1-saturate(Wineart/255))`, 방향 보정(`GetAttackSideRate`) 등 실측 전투 공식
 - 공식·불변식 검증 요약
 
 ### 원클릭 프리셋 6종

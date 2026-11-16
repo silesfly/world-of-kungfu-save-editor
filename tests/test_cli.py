@@ -1648,5 +1648,91 @@ sys.exit(wok_editor.main(["edit", target, "--money", money]))
                 with self.assertRaises(PermissionError):
                     wok_editor.assert_no_symlinks(Path(raw))
 
+    def test_rea_extended_gamedata_fields_cli_and_roundtrip(self):
+        ses0 = wok_editor.WokSaveSession(self.demo_bytes)
+        sum0 = ses0.summary()
+        self.assertEqual(sum0["m_ArenaWinCount"], 0)
+        self.assertEqual(sum0["m_Arena_Rewards_JunShan"], "000000000000000")
+        self.assertEqual(sum0["m_DaTianWangSiLevel"], 0)
+        self.assertEqual(sum0["m_DongShuFactionMember"], "1202|607")
+        self.assertEqual(sum0["m_JinWuFactionMember"], "9018|502")
+        self.assertEqual(sum0["m_XiBoFactionMember"], "202|401|402|403")
+        self.assertEqual(sum0["m_BeiGuFactionMember"], "205")
+        self.assertEqual(sum0["simpleWantedInfos_count"], 0)
+        self.assertEqual(sum0["m_SpecialWantedList"], [])
+
+        ses0.root.val[30] = wok_editor.mp_arr([
+            wok_editor.mp_arr([wok_editor.mp_str("wanted_1"), wok_editor.mp_int(42)])
+        ])
+        seeded_bytes = ses0.to_bytes()
+        seeded_path = self.save_dir / "bigbang3data.dat"
+        _write_bytes(seeded_path, seeded_bytes)
+
+        ses = wok_editor.WokSaveSession(seeded_bytes)
+        orig_g30_mp = wok_editor.encode_msgpack(ses.root.val[30])
+
+        rc = wok_editor.main([
+            "edit",
+            str(seeded_path),
+            "--arena-wins", "12",
+            "--datianwangsi-level", "5",
+            "--junshan-rewards", "111000000000000",
+            "--datianwangsi-rewards", "1&100|2&200",
+            "--dongshu-members", "1202 | 607 | 999 | 607",
+            "--jinwu-members", "9018|502|503",
+            "--xibo-members", "202|401",
+            "--beigu-members", "205|206",
+            "--special-wanted", "sp_1|sp_2|sp_1",
+        ])
+        self.assertEqual(rc, 0)
+
+        reloaded = _load_session_from_path(seeded_path)
+        self.assertEqual(wok_editor.encode_msgpack(reloaded.root.val[30]), orig_g30_mp)
+        ext = reloaded.get_extended_world()
+        self.assertEqual(ext["m_ArenaWinCount"], 12)
+        self.assertEqual(ext["m_DaTianWangSiLevel"], 5)
+        self.assertEqual(ext["m_Arena_Rewards_JunShan"], "111000000000000")
+        self.assertEqual(ext["m_Arena_Rewards_DaTianWangSi"], "1&100|2&200")
+        self.assertEqual(ext["m_DongShuFactionMember"], "1202|607|999")
+        self.assertEqual(ext["dongShuMembers"], ["1202", "607", "999"])
+        self.assertEqual(ext["m_JinWuFactionMember"], "9018|502|503")
+        self.assertEqual(ext["m_XiBoFactionMember"], "202|401")
+        self.assertEqual(ext["m_BeiGuFactionMember"], "205|206")
+        self.assertEqual(ext["m_SpecialWantedList"], ["sp_1", "sp_2"])
+        self.assertEqual(ext["simpleWantedInfos_count"], 1)
+
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertEqual(wok_editor.main(["inspect", str(seeded_path), "--json"]), 0)
+        inspected = json.loads(buf.getvalue())["summary"]
+        self.assertEqual(inspected["m_ArenaWinCount"], 12)
+        self.assertEqual(inspected["m_DongShuFactionMember"], "1202|607|999")
+        self.assertEqual(inspected["m_SpecialWantedList"], ["sp_1", "sp_2"])
+
+        with self.assertRaises(ValueError):
+            reloaded.set_world(arena_win_count=-1)
+        with self.assertRaises(ValueError):
+            reloaded.set_world(datianwangsi_level=-1)
+        with self.assertRaises(ValueError):
+            reloaded.set_world(arena_rewards_junshan="a\nb")
+        with self.assertRaises(ValueError):
+            reloaded.set_world(dongshu_members="1202,607")
+        with self.assertRaises(ValueError):
+            reloaded.set_world(special_wanted_list=["bad|id"])
+
+        for mut in (
+            lambda s: s.root.val.__setitem__(25, wok_editor.mp_int(-1)),
+            lambda s: s.root.val.__setitem__(36, wok_editor.MPNode("str", "bad")),
+            lambda s: s.root.val.__setitem__(38, wok_editor.MPNode("str", "1202,607")),
+            lambda s: s.root.val.__setitem__(43, wok_editor.mp_arr([wok_editor.mp_int(1)])),
+        ):
+            bad = wok_editor.WokSaveSession(self.demo_bytes)
+            mut(bad)
+            self.assertFalse(bad.validate()["ok"])
+            with self.assertRaises(ValueError):
+                bad.to_bytes()
+
 if __name__ == "__main__":
     unittest.main()

@@ -604,10 +604,25 @@ async function asyncTests() {
   const atlasHtml = ui1.document.getElementById('atlas-box').innerHTML;
   assert.ok(atlasHtml.includes('<th>항목 · 구조</th>') && atlasHtml.includes('<th>세부 규격 · 공식</th>'));
   assert.ok(atlasHtml.includes('XmlSaver (COMPRESSED 컨테이너)'));
+  assert.ok(atlasHtml.includes('91429750903495708124650874157912'));
+  assert.ok(atlasHtml.includes('InjuryCalManager.CalAttackDamage'));
+  assert.ok(atlasHtml.includes('InjuryCalManager.CalBeHitInjurt'));
   assert.ok(atlasHtml.includes('AtomData.get_totalValue()'));
   assert.ok(atlasHtml.includes('rollValue + levelupValue + talentValue + alterValue + juqingValue + equipValue + equipTraitValue + wugongValue + traitValue.'));
   assert.strictEqual((atlasHtml.match(/<tr><td>/g) || []).length, WokCatalog.codeAtlas.length);
   assert.ok(atlasHtml.includes('<td></td>') === false);
+  const extFormHtml = ui1.document.getElementById('world-extended-form').innerHTML;
+  for (const fieldName of ['m_ArenaWinCount', 'm_DaTianWangSiLevel', 'm_DongShuFactionMember', 'm_JinWuFactionMember', 'm_XiBoFactionMember', 'm_BeiGuFactionMember', 'm_SpecialWantedList', 'simpleWantedInfos']) {
+    assert.ok(extFormHtml.includes(fieldName), `world-extended-form missing ${fieldName}`);
+  }
+  const atlasSearchEl = ui1.document.getElementById('atlas-search');
+  atlasSearchEl.value = 'CalAttackDamage';
+  atlasSearchEl.input();
+  const filteredAtlasHtml = ui1.document.getElementById('atlas-box').innerHTML;
+  assert.strictEqual((filteredAtlasHtml.match(/<tr><td>/g) || []).length, 1);
+  assert.ok(filteredAtlasHtml.includes('InjuryCalManager.CalAttackDamage'));
+  atlasSearchEl.value = '';
+  atlasSearchEl.input();
   pass += 1;
 
   const ui2 = bootUi({ location: { protocol: 'file:' } });
@@ -1597,6 +1612,91 @@ print(json.dumps(res))
     const pyDat = require('child_process').execFileSync('python3', ['-c', pyScript, inPath], { cwd: ROOT, encoding: 'utf8' });
     assert.ok(sameBytes(WokMsgPack.encodeMsgPack(ses.ast), decodeMp(pyDat)));
     fsParity.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  ok('codeAtlas exposes REA InjuryCalManager and XmlSaver formulas', () => {
+    assert.ok(WokCatalog.codeAtlas.length >= 9, `codeAtlas ${WokCatalog.codeAtlas.length} < 9`);
+    assert.strictEqual(WokCatalog.meta.counts.codeAtlas, WokCatalog.codeAtlas.length);
+    const byId = new Map(WokCatalog.codeAtlas.map((x) => [x.id, x]));
+    const xmlSaver = byId.get('XmlSaver');
+    assert.ok(xmlSaver && xmlSaver.detail.includes('91429750903495708124650874157912'));
+    assert.ok(xmlSaver.detail.includes('RijndaelManaged') && xmlSaver.detail.includes('COMPRESSED:'));
+    const calAtk = byId.get('InjuryCalManager.CalAttackDamage');
+    assert.ok(calAtk, 'InjuryCalManager.CalAttackDamage missing');
+    for (const kw of ['Style 701', 'Melody', 'Style 801', '1+Drunk/25', 'saturate(Hurt/255)', 'GetAttackSideRate']) {
+      assert.ok(calAtk.detail.includes(kw), `CalAttackDamage missing ${kw}`);
+    }
+    const calHit = byId.get('InjuryCalManager.CalBeHitInjurt');
+    assert.ok(calHit, 'InjuryCalManager.CalBeHitInjurt missing');
+    for (const kw of ['(Drunk/100)*(1-saturate(Wineart/255))', '1025', 'MelodyATKresist']) {
+      assert.ok(calHit.detail.includes(kw), `CalBeHitInjurt missing ${kw}`);
+    }
+  });
+
+  ok('extended GameData fields read/edit/validate and MessagePack round-trip', () => {
+    const ses0 = WokEditorCore.loadSessionSync(DEMO_SYNC);
+    const sum0 = ses0.getSummary();
+    assert.strictEqual(sum0.arenaWinCount, 0);
+    assert.strictEqual(sum0.arenaRewardsJunShan, '000000000000000');
+    assert.strictEqual(sum0.daTianWangSiLevel, 0);
+    assert.strictEqual(sum0.dongShuFactionMember, '1202|607');
+    assert.strictEqual(sum0.jinWuFactionMember, '9018|502');
+    assert.strictEqual(sum0.xiBoFactionMember, '202|401|402|403');
+    assert.strictEqual(sum0.beiGuFactionMember, '205');
+    assert.strictEqual(sum0.wantedCount, 0);
+    assert.strictEqual(sum0.specialWantedCount, 0);
+
+    ses0.ast.v[30] = WokMsgPack.makeArr([WokMsgPack.makeArr([WokMsgPack.makeStr('wanted_1'), WokMsgPack.makeInt(42)])]);
+    const seededDat = ses0.encodeSync();
+    const ses = WokEditorCore.loadSessionSync(seededDat);
+    const origWantedBytes = WokMsgPack.encodeMsgPack(ses.ast.v[30]);
+
+    ses.updateWorld({
+      arenaWinCount: 12,
+      daTianWangSiLevel: 5,
+      arenaRewardsJunShan: '111000000000000',
+      arenaRewardsDaTianWangSi: '1&100|2&200',
+      dongShuFactionMember: '1202 | 607 | 999 | 607',
+      jinWuFactionMember: '9018|502|503',
+      xiBoFactionMember: '202|401',
+      beiGuFactionMember: '205|206',
+      specialWantedList: ['sp_1', 'sp_2', 'sp_1']
+    });
+    validateClean(ses, 'extended updateWorld');
+    const rtDat = roundTripSync(ses, 'extended updateWorld');
+    const reloaded = WokEditorCore.loadSessionSync(rtDat);
+    const ext = reloaded.getExtendedWorld();
+    assert.strictEqual(ext.arenaWinCount, 12);
+    assert.strictEqual(ext.daTianWangSiLevel, 5);
+    assert.strictEqual(ext.arenaRewardsJunShan, '111000000000000');
+    assert.strictEqual(ext.arenaRewardsDaTianWangSi, '1&100|2&200');
+    assert.strictEqual(ext.dongShuFactionMember, '1202|607|999');
+    assert.deepStrictEqual(ext.dongShuMembers, ['1202', '607', '999']);
+    assert.strictEqual(ext.jinWuFactionMember, '9018|502|503');
+    assert.strictEqual(ext.xiBoFactionMember, '202|401');
+    assert.strictEqual(ext.beiGuFactionMember, '205|206');
+    assert.deepStrictEqual(ext.specialWantedList, ['sp_1', 'sp_2']);
+    assert.strictEqual(ext.wantedCount, 1);
+    assert.ok(sameBytes(WokMsgPack.encodeMsgPack(reloaded.ast.v[30]), origWantedBytes), 'untouched simpleWantedInfos must remain byte-identical');
+
+    assert.throws(() => reloaded.updateWorld({ arenaWinCount: -1 }), /0 이상/);
+    assert.throws(() => reloaded.updateWorld({ daTianWangSiLevel: -2 }), /0 이상/);
+    assert.throws(() => reloaded.updateWorld({ arenaRewardsJunShan: 'a\nb' }), /줄바꿈/);
+    assert.throws(() => reloaded.updateWorld({ dongShuFactionMember: '1202,607' }), /쉼표/);
+    assert.throws(() => reloaded.updateWorld({ jinWuFactionMember: '9018&502' }), /&/);
+    assert.throws(() => reloaded.updateWorld({ specialWantedList: ['bad|id'] }), /구분자/);
+
+    for (const corrupt of [
+      (s) => { s.ast.v[25] = WokMsgPack.makeInt(-1); },
+      (s) => { s.ast.v[36] = WokMsgPack.makeStr('bad'); },
+      (s) => { s.ast.v[38] = WokMsgPack.makeStr('1202,607'); },
+      (s) => { s.ast.v[43] = WokMsgPack.makeArr([WokMsgPack.makeInt(1)]); }
+    ]) {
+      const bad = WokEditorCore.loadSessionSync(DEMO_SYNC);
+      corrupt(bad);
+      assert.strictEqual(bad.validate().valid, false);
+      assert.throws(() => bad.encodeSync(), /세이브 검증 실패/);
+    }
   });
 
   try {
